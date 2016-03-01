@@ -16,6 +16,8 @@
 #include <curlpp/Options.hpp>
 #include <curlpp/Exception.hpp>
 
+#include <pqxx/pqxx>
+
 #include "ParseXML.hpp"
 
 using namespace std;
@@ -26,28 +28,73 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    const string url = "https://www.vegvesen.no/ws/no/vegvesen/veg/trafikkpublikasjon/vaer/1/GetMeasurementWeatherSiteTable/";
+    try {
+        try {
+            const string url = "https://www.vegvesen.no/ws/no/vegvesen/veg/trafikkpublikasjon/vaer/1/GetMeasurementWeatherSiteTable/";
 
-    std::string username = argv[1];
-    std::string password = argv[2];
-    std::string credentials = username + ":" + password;
+            std::string username = argv[1];
+            std::string password = argv[2];
+            std::string credentials = username + ":" + password;
 
-    curlpp::Cleanup cleaner;
-    curlpp::Easy request;
+            curlpp::Cleanup cleaner;
+            curlpp::Easy request;
 
-    request.setOpt(new curlpp::options::Url(url));
-    request.setOpt(new curlpp::options::UserPwd(credentials));
+            request.setOpt(new curlpp::options::Url(url));
+            request.setOpt(new curlpp::options::UserPwd(credentials));
 
-    ostringstream out;
-    out << request;
+            ostringstream out;
+            out << request;
 
-    gnome::ParseXML parse{out.str()};
+            gnome::ParseXML parse{out.str()};
 
-    auto l = parse.locations();
-    for (auto& i : l) {
-        cout << i.first << ", " << i.second.description << endl;
+            auto l = parse.locations();
+
+            pqxx::connection C("dbname=weather user=claus hostaddr=127.0.0.1 port=5432");
+            if (!C.is_open()) {
+                cerr << "Unable to connect to database " << C.dbname() << endl;
+                return EXIT_FAILURE;
+            }
+
+            std::string query = "select * from locations";
+            pqxx::nontransaction N(C);
+            pqxx::result R(N.exec(query));
+
+            for (pqxx::result::const_iterator c = R.begin(); c != R.end(); ++c) {
+//                cout << c[1].as<int>() << ", " << c[2].as<string>() << endl;
+                l.erase(to_string(c[1].as<int>()));
+            }
+            C.disconnect();
+
+            pqxx::connection D("dbname=weather user=claus hostaddr=127.0.0.1 port=5432");
+            if (!D.is_open()) {
+                cerr << "Unable to connect to database " << D.dbname() << endl;
+                return EXIT_FAILURE;
+            }
+
+            pqxx::work W(D);
+            for (auto& i : l) {
+//                cout << i.first << ", " << i.second.description << ", " << i.second.latitude <<  ", " << i.second.longitude <<  endl;
+                query = "insert into locations (_id, description, coordinate) values (";
+                query += i.second.id + ",'" + i.second.description + "',point(" + i.second.longitude + "," + i.second.latitude + "))";
+                W.exec(query);
+            }
+            W.commit();
+            cout << "locations: " << l.size() << endl;
+
+            C.disconnect();
+            return EXIT_SUCCESS;
+
+        } catch (const exception& e) {
+            cerr << e.what() << endl;
+            return EXIT_FAILURE;
+        }
+    } catch (curlpp::LogicError& e) {
+        cout << e.what() << endl;
+        return EXIT_FAILURE;
+    } catch (curlpp::RuntimeError& e) {
+        cout << e.what() << endl;
+        return EXIT_FAILURE;
     }
-    cout << "locations: " << l.size() << endl;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
