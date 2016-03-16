@@ -73,9 +73,8 @@ int main(int argc, char* argv[]) {
 
             pqxx::work W(D);
             for (auto& i : l) {
-//                cout << i.first << ", " << i.second.description << ", " << i.second.latitude <<  ", " << i.second.longitude <<  endl;
-                query = "insert into locations (_id, description, coordinate) values (";
-                query += i.second.id + ",'" + i.second.description + "',point(" + i.second.longitude + "," + i.second.latitude + "))";
+                query = "insert into locations (site_id, description, coordinate) values (";
+                query += i.second.site_id + ",'" + i.second.description + "',point(" + i.second.longitude + "," + i.second.latitude + "))";
                 W.exec(query);
             }
             W.commit();

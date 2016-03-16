@@ -14,13 +14,13 @@
 #include <boost/algorithm/string/replace.hpp>
 
 struct Location {
-    std::string id;
+    std::string site_id;
     std::string description;
     std::string latitude;
     std::string longitude;
 
     Location(std::string a, std::string b, std::string c, std::string d)
-    : id{a}, description{b}, latitude{c}, longitude{d} {}
+    : site_id{a}, description{b}, latitude{c}, longitude{d} {}
 };
 
 
