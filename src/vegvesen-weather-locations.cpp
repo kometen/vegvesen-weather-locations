@@ -73,12 +73,12 @@ int main(int argc, char* argv[]) {
 
             pqxx::work W(D);
             for (auto& i : l) {
-                query = "insert into locations (site_id, description, coordinate) values (";
+                query = "insert into locations (site_id, measurementsitename, coordinate) values (";
                 query += i.second.site_id + ",'" + i.second.description + "',point(" + i.second.longitude + "," + i.second.latitude + "))";
                 W.exec(query);
             }
             W.commit();
-            cout << "locations: " << l.size() << endl;
+//            cout << "locations: " << l.size() << endl;
 
             C.disconnect();
             return EXIT_SUCCESS;
